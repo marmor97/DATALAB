@@ -35,7 +35,6 @@ danish_p_gender <- danish_p_gender %>%
 danish_p_gender <- danish_p_gender %>% 
   mutate(m_f_total = (female + male))
 
-
 danish_p_gender <- danish_p_gender %>% 
   mutate(m_perc = male/m_f_total) %>% 
   mutate(f_perc = female/m_f_total)
@@ -73,94 +72,22 @@ for (i in (1:nrow(danish_p_gender))) {
 
 Creating quantiles for network and activity
 ```{r}
-#quantiles of 10% for network size
-quantiles_10 <- quantile(danish_p_gender$total_unique_P_C, prob = c(0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1))
-quantiles_10
+#way to apply the quantiles
+p_load(Hmisc)
+danish_p_gender$network <- as.numeric(cut2(danish_p_gender$total_unique_P_C, g=10))
+danish_p_gender$activity <- as.numeric(cut2(danish_p_gender$post_comment_total, g=10))
 
-#quantiles of 10% for activity
-activity_quantiles_10 <- quantile(danish_p_gender$post_comment_total, prob = c(0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1))
-activity_quantiles_10
-```
+#manually changing the quantiles
+table(danish_p_gender$network)
 
-Network 10% groups
-```{r}
-#network size classification
-#Creating an empty column
-danish_p_gender$network <- c(0)
-
-for (i in (1:nrow(danish_p_gender))) {
-  if (danish_p_gender$total_unique_P_C[i] > 0){
-    danish_p_gender$network[i] <- 0  
-    }
-  if (danish_p_gender$total_unique_P_C[i] > quantiles_10[1]){
-    danish_p_gender$network[i] <- 1 
-  }
-  if (danish_p_gender$total_unique_P_C[i] > quantiles_10[2]){
-    danish_p_gender$network[i] <- 2 
-  }
-  if (danish_p_gender$total_unique_P_C[i] > quantiles_10[3]){
-    danish_p_gender$network[i] <- 3 
-    }
-  if (danish_p_gender$total_unique_P_C[i] > quantiles_10[4]){
-    danish_p_gender$network[i] <- 4 
-  }
-  if (danish_p_gender$total_unique_P_C[i] > quantiles_10[5]){
-    danish_p_gender$network[i] <- 5 
-  }
-  if (danish_p_gender$total_unique_P_C[i] > quantiles_10[6]){
-    danish_p_gender$network[i] <- 6 
-  }
-  if (danish_p_gender$total_unique_P_C[i] > quantiles_10[7]){
-    danish_p_gender$network[i] <- 7 
-  }
-  if (danish_p_gender$total_unique_P_C[i] > quantiles_10[8]){
-    danish_p_gender$network[i] <- 8 
-    }
-  if (danish_p_gender$total_unique_P_C[i] > quantiles_10[9]){
-    danish_p_gender$network[i] <- 9 
-  }
+for (i in (1:nrow(danish_p_gender[1:6712,]))) {
+  if (danish_p_gender$total_unique_P_C[i] == 4){
+    danish_p_gender$network[i] <- 2  
+  } 
 }
+#7299
 
-```
-
-Activity 10% groups
-```{r}
-danish_p_gender$activity <- c(0)
-
-
-for (i in (1:nrow(danish_p_gender))) {
-  if (danish_p_gender$post_comment_total[i] > 0){
-    danish_p_gender$activity[i] <- 0  
-    }
-  if (danish_p_gender$post_comment_total[i] > activity_quantiles_10[1]){
-    danish_p_gender$activity[i] <- 1 
-  }
-  if (danish_p_gender$post_comment_total[i] > activity_quantiles_10[2]){
-    danish_p_gender$activity[i] <- 2 
-  }
-  if (danish_p_gender$post_comment_total[i] > activity_quantiles_10[3]){
-    danish_p_gender$activity[i] <- 3 
-    }
-  if (danish_p_gender$post_comment_total[i] > activity_quantiles_10[4]){
-    danish_p_gender$activity[i] <- 4 
-  }
-  if (danish_p_gender$post_comment_total[i] > activity_quantiles_10[5]){
-    danish_p_gender$activity[i] <- 5 
-  }
-  if (danish_p_gender$post_comment_total[i] > activity_quantiles_10[6]){
-    danish_p_gender$activity[i] <- 6 
-  }
-  if (danish_p_gender$post_comment_total[i] > activity_quantiles_10[7]){
-    danish_p_gender$activity[i] <- 7 
-  }
-  if (danish_p_gender$post_comment_total[i] > activity_quantiles_10[8]){
-    danish_p_gender$activity[i] <- 8 
-    }
-  if (danish_p_gender$post_comment_total[i] > activity_quantiles_10[9]){
-    danish_p_gender$activity[i] <- 9 
-  }
-}
-
+which(danish_p_gender$total_unique_P_C == 4, arr.ind = T)
 ```
 
 Gender
@@ -171,11 +98,8 @@ network_gender <- danish_p_gender %>% #making a df for privacy size with dominan
   group_by(dominance, network) %>% 
   summarise(n = n(), percentage = round((n/length(danish_p_gender$network)*100), digits = 3))
 
-network_gender
-
 network_gender$dominance <- as.factor(network_gender$dominance)
 network_gender$network <- as.factor(network_gender$network)
-network_gender
 
 #defining colors used
 suppressWarnings(require(RColorBrewer))
@@ -183,18 +107,19 @@ myColors <- brewer.pal(3, "Set1")
 
 #plots
 g_network <- ggplot(data = network_gender, aes(x = network, y = percentage, fill = factor(dominance)))
+
 g_network + geom_bar(stat = "identity",width=0.9) + scale_fill_brewer(palette="Paired") + xlab("Network size") + ylab("%") + labs(fill = "Group") + labs(title = "Network size and gender") + labs(caption = "Group: 0 = equally dominant, 1 = male dominant, 2 = female dominant ") + geom_text(aes(label = n), position = position_stack(vjust = 0.8))
 
 ```
+
 Plots activity
 ```{r}
 
 ##ACTIVITY
 actvity_gender <- danish_p_gender %>% #making a df for privacy size with dominance type
-  group_by(activity, dominance) %>% 
+  group_by(dominance, activity) %>% 
   summarise(n = n(), percentage = round((n/length(danish_p_gender$activity)*100), digits = 3))
 
-actvity_gender
 
 actvity_gender$dominance <- as.factor(actvity_gender$dominance)
 actvity_gender$activity <- as.factor(actvity_gender$activity)
@@ -212,13 +137,15 @@ Privacy
 Plots network
 ```{r}
 ##NETWORK
+
 network_privacy <- danish_p_gender %>% #making a df for privacy size with dominance type
   group_by(privacy, network) %>% 
   summarise(n = n(), percentage = round((n/length(danish_p_gender$network)*100), digits = 3))
 
+network_privacy$privacy <- as.factor(network_gender$dominance)
 
-network_privacy$provacy <- as.factor(network_gender$dominance)
 network_privacy$network <- as.factor(network_gender$network)
+
 network_privacy
 
 #defining colors used
@@ -229,6 +156,8 @@ myColors <- brewer.pal(3, "Set1")
 network_private <- ggplot(data = network_privacy, aes(x = network, y = percentage, fill = factor(privacy)))
 network_private + geom_bar(stat = "identity",width=0.9) + scale_fill_brewer(palette="Paired") + xlab("Network size") + ylab("%") + labs(fill = "Group") + labs(title = "Network size and privacy") + geom_text(aes(label = n), position = position_stack(vjust = 0.8))
 
+
+
 ```
 Plots activity
 ```{r}
@@ -236,8 +165,6 @@ Plots activity
 actvity_privacy <- danish_p_gender %>% #making a df for privacy size with dominance type
   group_by(activity, privacy) %>% 
   summarise(n = n(), percentage = round((n/length(danish_p_gender$activity)*100), digits = 3))
-
-actvity_privacy
 
 actvity_privacy$privacy <- as.factor(actvity_privacy$privacy)
 actvity_privacy$activity <- as.factor(actvity_privacy$activity)
@@ -281,6 +208,19 @@ activity-gender
 #contingency table
 gen_activity <- table(male_female$dominance, male_female$activity)
 gen_activity
+
+testing_quantile <- table(danish_p_gender$dominance, danish_p_gender$activity)
+
+sum(testing_quantile[,1])
+sum(testing_quantile[,2])
+sum(testing_quantile[,3])
+sum(testing_quantile[,4])
+sum(testing_quantile[,5])
+sum(testing_quantile[,6])
+sum(testing_quantile[,7])
+sum(testing_quantile[,8])
+sum(testing_quantile[,9])
+sum(testing_quantile[,10])
 
 #marginal frequencies
 margin.table(gen_activity, 1)#row frequencies - n of men and women
@@ -359,10 +299,6 @@ chisq.test(private_net)
 #value of chisq = 16.41, df = 18, pvalue = 0.06
 chisq.test(private_active)
 #value of chisq = 20.13, df = 18, pvalue = 0.124
-
-
-#there might be gender differences in preffered social network size and level of activity
-hist(privacy_cor$dominance)
 ```
 
 correlation
@@ -382,5 +318,32 @@ relevel(privacy_cor$privacy)
 cor <- cor(privacy_cor)
 
 corrplot(cor, method = "color", order ="hclust")
-
 ```
+
+Relations between two 10% groups
+```{r}
+nrow(filter(danish_p_gender, network == 10 & activity == 10))/nrow(filter(danish_p_gender, activity == 10))*100
+nrow(filter(danish_p_gender, network == 10 & activity == 10))/nrow(filter(danish_p_gender, network == 10))*100
+
+#67.29242% overlap with activity 10%
+#66.19318% overlap with network 10%
+```
+
+Removing comment
+```{r}
+#repeating steps with comment 
+danish_p_gender$activity_comment <- as.numeric(cut2(danish_p_gender$comment_total, g=10))
+
+actvity_comment_gender <- danish_p_gender %>% #making a df for privacy size with dominance type
+  group_by(dominance, activity_comment) %>% 
+  summarise(n = n(), percentage = round((n/length(danish_p_gender$activity_comment)*100), digits = 3))
+
+actvity_comment_gender$dominance <- as.factor(actvity_comment_gender$dominance)
+actvity_comment_gender$activity_comment <- as.factor(actvity_comment_gender$activity_comment)
+
+#plots
+g_activity <- ggplot(data = actvity_comment_gender, aes(x = activity_comment, y = percentage, fill = factor(dominance)))
+g_activity + geom_bar(stat = "identity",width=0.9) + scale_fill_brewer(palette="Paired") + xlab("Actvity size") + ylab("%") + labs(fill = "Group") + labs(title = "Activity size and gender - comment") + labs(caption = "Group: 0 = equally dominant, 1 = male dominant, 2 = female dominant ") + geom_text(aes(label = n), position = position_stack(vjust = 0.8))
+```
+```
+
