@@ -1,0 +1,106 @@
+---
+title: "Sample descriptions"
+author: "Marie Mortensen"
+date: "10/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Loading packages and files and changing classes of predictor and outcome variables 
+```{r}
+#sourcing functions
+source("DATALAB functions - FB data.R")
+
+#packages for modelling and preprocessing
+pacman::p_load(caret, tidyverse, pROC, nnet)
+
+#reading input file 
+danish_p_gender <- read.csv("FB/CSVs/danish_p_gender_clean&ready.csv")
+
+#selecting and transforming important variables 
+all_pred <- danish_p_gender %>% select(
+  dominance,
+  dominant_topic,
+  new_days
+  )
+
+#setting seed to get similar results everytime
+set.seed(2020)
+
+#generating 1000 samples with balanced group levels using replicate and "my_sample" function
+all_samples <- replicate(1000, my_sample(all_pred, "dominance", "1", "2", "3"), simplify = F)
+```
+
+Desciptive stats of all samples
+```{r}
+#rbinding list of dataframes to get an overview of all samples
+big_sample_data <- bind_rows(all_samples)
+
+#distribution of topics across groups in sampled data
+big_sample_data %>% ggplot(aes(dominant_topic)) + 
+  geom_histogram(fill = "skyblue", color = "darkblue", bins = 50) + 
+  scale_x_continuous(breaks = c(1:50)) + 
+  facet_wrap(.~dominance)
+
+#distribution of topics across groups in original data
+all_pred %>% ggplot(aes(dominant_topic)) + 
+  geom_histogram(fill = "skyblue", 
+                 color = "darkblue", 
+                 bins = 50) + 
+  facet_wrap(.~dominance) + 
+  xlab("Topic") + 
+  scale_x_continuous(breaks = c(1:50))
+
+#both
+big_sample_data %>% 
+  ggplot(aes(dominant_topic)) + 
+  geom_histogram() + 
+  scale_x_continuous(breaks = c(1:50)) + 
+  geom_histogram(data = all_pred, fill = "skyblue") + 
+  facet_wrap(.~dominance) + xlab("Topic")
+
+#specific counts of each topic
+big_sample_data %>% filter(dominant_topic ==28) %>% group_by(dominant_topic) %>% summarise(count = n())
+big_sample_data %>% group_by(dominant_topic) %>% summarise(count = n())
+big_sample_data %>% group_by(dominant_topic, dominance) %>% summarise(count = n())
+
+big_sample_data %>% 
+  filter(dominant_topic==28) %>% 
+  group_by(dominant_topic, dominance) %>% 
+  summarise(count = n())
+
+all_pred %>% 
+  filter(dominant_topic==3) %>% 
+  group_by(dominant_topic, dominance) %>% 
+  summarise(count = n())
+
+for (i in 1:length(all_samples)){ #pasting sample number inside to keep track of different samples
+  df <- all_samples[[i]]
+  df$sample <- paste(i)
+  if(i == 1){
+    all <- df 
+  }else{
+      all <- rbind(all, df)
+    
+  }
+}
+count <- all %>% 
+  group_by(dominant_topic, sample) %>%  #dominance in every sample
+  summarise(amount = n()) 
+
+means <- count %>% 
+  group_by(dominant_topic) %>% 
+  summarise(mean = mean(amount), sd = sd(amount)) #standard deviation
+
+means %>% filter(dominant_topic==28) 
+
+means %>% ggplot(aes(x = dominant_topic, y = mean)) + 
+  geom_bar(fill = "skyblue", color = "darkblue", stat = "identity") + 
+  scale_x_continuous(breaks = c(1:50)) + 
+  ylab("Mean count of topics") + 
+  xlab("Topic") + 
+  facet_wrap(.~dominance) 
+```
+
